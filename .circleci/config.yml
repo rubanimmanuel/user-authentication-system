@@ -1,33 +1,34 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@2.1.1
-  postgres: circleci/postgres@2.2.0
-
 jobs:
   build-and-test:
     docker:
-      - image: cimg/python:3.9
+      - image: cimg/python:3.9.13
+      - image: postgres:13.5
+        environment:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
     steps:
       - checkout
-      - python/install-packages:
-          pkg-manager: pip
-      - postgres/start:
-          version: 13.5
-          username: testuser
-          password: testpass
-          database: testdb
       - run:
           name: Install dependencies
           command: |
+            python -m venv venv
+            . venv/bin/activate
             pip install -r requirements.txt
+      - run:
+          name: Wait for PostgreSQL
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
       - run:
           name: Run migrations
           command: |
+            . venv/bin/activate
             python manage.py migrate
       - run:
           name: Run tests
           command: |
+            . venv/bin/activate
             python manage.py test
 
 workflows:
